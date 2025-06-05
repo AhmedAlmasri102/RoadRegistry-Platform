@@ -96,12 +96,10 @@ public class Person {
         LocalDate dob = LocalDate.parse(this.birthdate, DATE_FMT);
         int ageNow = Period.between(dob, LocalDate.now()).getYears();
 
-        // Condition (B): If under 18, cannot change address
         if (ageNow < 18 && !newAddress.equals(this.address)) {
             return false;
         }
 
-        // Condition (C): If the birthdate is changing, no other field may change
         boolean birthChanged = !newBirthdate.equals(this.birthdate);
         boolean nameOrIDOrAddressChanged =
                !newID.equals(originalID)
@@ -129,17 +127,14 @@ public class Person {
             boolean replacedOne = false;
 
             for (String line : allLines) {
-                // Split into at most 5 parts:
-                //   [0]=personID, [1]=firstName, [2]=lastName, [3]=address, [4]=birthdate
+                // Split into at most 5 parts
                 String[] parts = line.split("\\|", 5);
                 if (parts.length < 5) {
-                    // Malformed line—just keep it unchanged
                     updatedLines.add(line);
                     continue;
                 }
 
                 if (parts[0].equals(originalID) && !replacedOne) {
-                    // This is the line we want to replace exactly once
                     String newRecord = String.join("|",
                         newID,
                         newFirstName,
@@ -150,7 +145,6 @@ public class Person {
                     updatedLines.add(newRecord);
                     replacedOne = true;
                 } else {
-                    // Keep the existing line unchanged
                     updatedLines.add(line);
                 }
             }
@@ -163,7 +157,7 @@ public class Person {
                 StandardOpenOption.TRUNCATE_EXISTING
             );
 
-            // Update this object’s fields in memory:
+            // Update this object’s fields
             this.personID  = newID;
             this.firstName = newFirstName;
             this.lastName  = newLastName;
@@ -173,18 +167,86 @@ public class Person {
             return true;
 
         } catch (IOException e) {
-            // If any I/O error happens while reading/writing, signal failure
             return false;
         }
     }
 
+    public String addDemeritPoints(String offenseDate, int pts) {
+        //Validate offenseDate format
+        if (!validateDate(offenseDate)) {
+            return "Failed";
+        }
+        if (pts < 1 || pts > 6) {
+            return "Failed";
+        }
 
+        //Parse the offenseDate into a LocalDate
+        LocalDate od;
+        try {
+            od = LocalDate.parse(offenseDate, DATE_FMT);
+        } catch (DateTimeParseException e) {
+            return "Failed";
+        }
 
+        //Build the record to append
+        String record = String.join("|",
+            personID,
+            offenseDate,
+            String.valueOf(pts)
+        );
 
+        try {
+            //Append to demeritPoints.txt
+            Files.write(
+                DEMERITS_FILE,
+                Collections.singletonList(record),
+                StandardOpenOption.CREATE,
+                StandardOpenOption.APPEND
+            );
+        } catch (IOException e) {
+            return "Failed";
+        }
 
+        //Sum up all points in the last two years
+        LocalDate cutoff = od.minusYears(2);
+        int runningTotal = 0;
 
+        try {
+            List<String> lines = Files.readAllLines(DEMERITS_FILE);
+            for (String line : lines) {
+                String[] parts = line.split("\\|", 3);
+                if (parts.length < 3) {
+                    continue;
+                }
+                if (!parts[0].equals(personID)) {
+                    continue;
+                }
+                //Parse the offense date
+                LocalDate recordDate = LocalDate.parse(parts[1], DATE_FMT);
+                int recordPts = Integer.parseInt(parts[2]);
+                if (!recordDate.isBefore(cutoff)) {
+                    runningTotal += recordPts;
+                }
+            }
+        } catch (IOException e) {
+        }
 
+        //Calculate age on the offense date
+        LocalDate dob;
+        try {
+            dob = LocalDate.parse(this.birthdate, DATE_FMT);
+        } catch (DateTimeParseException ex) {
+            return "Success";
+        }
+        int ageOnOffense = Period.between(dob, od).getYears();
+        int threshold = (ageOnOffense < 21) ? 6 : 12;
 
+        if (runningTotal > threshold) {
+            this.isSuspended = true;
+        }
+
+        return "Success";
+    }
 
   
     private boolean validatePersonID(String id) {
