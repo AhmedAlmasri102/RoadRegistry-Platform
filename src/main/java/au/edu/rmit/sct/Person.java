@@ -35,7 +35,7 @@ public class Person {
         this.birthdate = birthdate;
     }
 
-  
+    // Add person record to persons.txt, must be valid
     public boolean addPerson() {
         if (!validatePersonID(personID)) {
             return false;
@@ -68,7 +68,7 @@ public class Person {
         }
     }
 
-
+    // Update persons details that reflect the conditions
     public boolean updatePersonalDetails(
         String originalID,
         String newID,
@@ -78,6 +78,7 @@ public class Person {
         String newBirthdate
     ) {
 
+        // Validate input
         if (!validatePersonID(newID)) {
             return false;
         }
@@ -88,7 +89,7 @@ public class Person {
             return false;
         }
 
- 
+        // Age check, address change for user < 18 
         LocalDate dob = LocalDate.parse(this.birthdate, DATE_FMT);
         int ageNow = Period.between(dob, LocalDate.now()).getYears();
 
@@ -96,6 +97,7 @@ public class Person {
             return false;
         }
 
+        // Prevent birthdate change and other info change at the same time
         boolean birthChanged = !newBirthdate.equals(this.birthdate);
         boolean nameOrIDOrAddressChanged =
                !newID.equals(originalID)
@@ -108,7 +110,7 @@ public class Person {
         }
 
   
-
+        // ID starting with even digit cannot be changed
         char firstChar = originalID.charAt(0);
         if (Character.isDigit(firstChar)) {
             int digitValue = firstChar - '0';
@@ -167,8 +169,9 @@ public class Person {
         }
     }
 
-
+    // Add demerit points + determines suspension
     public String addDemeritPoints(String offenseDate, int pts) {
+        // Input validation
         if (!validateDate(offenseDate)) {
             return "Failed";
         }
@@ -184,6 +187,7 @@ public class Person {
             return "Failed";
         }
 
+        // Record new offense
         String record = String.join("|",
             personID,
             offenseDate,
@@ -200,7 +204,8 @@ public class Person {
         } catch (IOException e) {
             return "Failed";
         }
-
+        
+        // Calculate running total for demerits in last 2 years
         LocalDate cutoff = od.minusYears(2);
         int runningTotal = 0;
 
@@ -242,7 +247,8 @@ public class Person {
     }
 
 
- 
+    // Validates ID format 10 characters, first 2 digits are 2-9, last 2 are uppercase A-Z
+    // Must include 2 special characters in between first and last 2 characters.
     private boolean validatePersonID(String id) {
         if (id == null || id.length() != 10) {
             return false;
@@ -269,6 +275,8 @@ public class Person {
         return (specialCount >= 2);
     }
 
+    // Validates address format postcode|street|suburb|state|country
+    // State must be Victoria
     private boolean validateAddress(String addr) {
         if (addr == null) {
             return false;
@@ -288,7 +296,7 @@ public class Person {
         return true;
     }
 
- 
+    // Validates date format DD-MM-YYYY
     private boolean validateDate(String d) {
         if (d == null) {
             return false;
@@ -301,6 +309,7 @@ public class Person {
         }
     }
 
+    // Returns suspended status
     public boolean isSuspended() {
         return isSuspended;
     }
